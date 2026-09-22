@@ -11,7 +11,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "cne_d1_prod"
-database_id = "YOUR_ACTUAL_D1_DATABASE_ID"
+database_id = "b03e5d23-d7e2-4255-aa1d-3c4399641589"
 migrations_dir = "migrations"
 
 [vars]
