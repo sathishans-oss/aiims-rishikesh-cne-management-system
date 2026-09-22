@@ -1,9 +1,14 @@
 /**
  * Web Crypto utilities for Cloudflare Workers.
  * Passwords use PBKDF2-SHA-256 with a per-user salt and server-side pepper.
+ * 
+ * Cloudflare Workers production WebCrypto currently caps a single PBKDF2
+ * operation at 100,000 iterations (iteration counts above 100,000 fail with
+ * "Pbkdf2 failed: iteration counts above 100000 are not supported").
  */
 
-const PBKDF2_ITERATIONS = 210_000;
+const PBKDF2_ITERATIONS = 100_000;
+const MAX_SUPPORTED_ITERATIONS = 100_000;
 
 export function generateRandomToken(bytes = 32): string {
   const array = new Uint8Array(bytes);
@@ -24,7 +29,17 @@ function bytesToHex(bytes: ArrayBuffer): string {
   return Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function hashPassword(password: string, salt: string, pepper: string): Promise<string> {
+export async function hashPassword(
+  password: string,
+  salt: string,
+  pepper: string,
+  iterations = PBKDF2_ITERATIONS
+): Promise<string> {
+  if (iterations <= 0 || iterations > MAX_SUPPORTED_ITERATIONS) {
+    throw new Error(
+      `Unsupported PBKDF2 iteration count: ${iterations}. Maximum allowed in Cloudflare Workers is ${MAX_SUPPORTED_ITERATIONS}.`
+    );
+  }
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -34,11 +49,11 @@ export async function hashPassword(password: string, salt: string, pepper: strin
     ['deriveBits']
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: hexToBytes(salt) as unknown as BufferSource, iterations: PBKDF2_ITERATIONS },
+    { name: 'PBKDF2', hash: 'SHA-256', salt: hexToBytes(salt) as unknown as BufferSource, iterations },
     keyMaterial,
     256
   );
-  return `pbkdf2_sha256$${PBKDF2_ITERATIONS}$${bytesToHex(bits)}`;
+  return `pbkdf2_sha256$${iterations}$${bytesToHex(bits)}`;
 }
 
 export function timingSafeEqual(a: string, b: string): boolean {
@@ -48,9 +63,40 @@ export function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
-export async function verifyPassword(passwordAttempt: string, salt: string, pepper: string, storedHash: string): Promise<boolean> {
-  const computedHash = await hashPassword(passwordAttempt, salt, pepper);
-  return timingSafeEqual(computedHash, storedHash);
+export async function verifyPassword(
+  passwordAttempt: string,
+  salt: string,
+  pepper: string,
+  storedHash: string
+): Promise<boolean> {
+  if (!storedHash || typeof storedHash !== 'string') return false;
+
+  // Stored format: pbkdf2_sha256$<iterations>$<hash>
+  const parts = storedHash.split('$');
+  if (parts.length !== 3) return false;
+
+  const [algorithm, iterationsStr, expectedDerivedHex] = parts;
+  if (algorithm !== 'pbkdf2_sha256') return false;
+
+  if (!/^\d+$/.test(iterationsStr)) return false;
+  const iterations = parseInt(iterationsStr, 10);
+
+  // Reject iteration counts > 100,000 or invalid counts safely without attempting unsupported crypto operation
+  if (isNaN(iterations) || iterations <= 0 || iterations > MAX_SUPPORTED_ITERATIONS) {
+    return false;
+  }
+
+  // Reject malformed derived key hashes (expected 64 hex characters for 256-bit derived key)
+  if (!/^[0-9a-fA-F]{64}$/.test(expectedDerivedHex)) {
+    return false;
+  }
+
+  try {
+    const computedHash = await hashPassword(passwordAttempt, salt, pepper, iterations);
+    return timingSafeEqual(computedHash, storedHash.toLowerCase());
+  } catch {
+    return false;
+  }
 }
 
 export async function signPayload(payload: string, secret: string): Promise<string> {
