@@ -1,0 +1,24 @@
+name = "cne-management-system"
+main = "worker/index.ts"
+compatibility_date = "2026-09-19"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cne_d1_prod"
+database_id = "YOUR_ACTUAL_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+GEMINI_MODEL = "gemini-3.8-flash"
+ENVIRONMENT = "production"
+ALLOWED_ORIGIN = ""
+DEV_DEMO_SEED = "false"
+
+[triggers]
+crons = ["*/15 * * * *"]

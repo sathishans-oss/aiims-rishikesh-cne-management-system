@@ -1,0 +1,20 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { Cne } from '../../types';
+import { api } from '../../services/api';
+
+export interface CneCalendarProps { cnes: Cne[]; onSelectCne: (cne: Cne) => void; }
+const ymd=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+export const CneCalendar:React.FC<CneCalendarProps>=({cnes,onSelectCne})=>{
+ const [currentDate,setCurrentDate]=useState(new Date()); const [monthCnes,setMonthCnes]=useState<Cne[]>(cnes); const [loading,setLoading]=useState(false);
+ const year=currentDate.getFullYear(), month=currentDate.getMonth();
+ useEffect(()=>{let live=true; void(async()=>{setLoading(true);try{const first=new Date(year,month,1),last=new Date(year,month+1,0);const res=await api.listCnes({start_date:ymd(first),end_date:ymd(last),page_size:250});if(live)setMonthCnes(res.items||[]);}catch{if(live)setMonthCnes(cnes.filter(c=>c.cne_date.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)));}finally{if(live)setLoading(false);}})();return()=>{live=false};},[year,month]);
+ const map=useMemo(()=>{const out:Record<string,Cne[]>={};for(const c of monthCnes)(out[c.cne_date]??=[]).push(c);return out;},[monthCnes]);
+ const firstDay=new Date(year,month,1).getDay(), count=new Date(year,month+1,0).getDate(); const days:(number|null)[]=[...Array(firstDay).fill(null),...Array.from({length:count},(_,i)=>i+1)];
+ const names=['January','February','March','April','May','June','July','August','September','October','November','December']; const today=ymd(new Date());
+ return <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+  <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50"><div className="flex items-center gap-2"><CalendarIcon className="w-5 h-5 text-emerald-700"/><h3 className="font-bold text-slate-900 text-base">{names[month]} {year}</h3>{loading&&<Loader2 className="w-4 h-4 animate-spin text-slate-400"/>}</div><div className="flex gap-1"><button onClick={()=>setCurrentDate(new Date(year,month-1,1))} className="p-1.5 rounded-lg border"><ChevronLeft className="w-4 h-4"/></button><button onClick={()=>setCurrentDate(new Date())} className="px-2.5 py-1 text-xs font-semibold rounded-lg border">Today</button><button onClick={()=>setCurrentDate(new Date(year,month+1,1))} className="p-1.5 rounded-lg border"><ChevronRight className="w-4 h-4"/></button></div></div>
+  <div className="grid grid-cols-7 border-b bg-slate-50 text-center text-xs font-semibold text-slate-500 py-2.5">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=><div key={x}>{x}</div>)}</div>
+  <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 min-h-[500px]">{days.map((day,idx)=>{if(day===null)return <div key={`e${idx}`} className="bg-slate-50/40 p-2"/>;const date=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,items=map[date]||[];return <div key={date} className={date===today?'p-2 bg-emerald-50/30':'p-2 hover:bg-slate-50/60'}><div className="flex justify-between mb-1"><span className={date===today?'text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-700 text-white':'text-xs font-semibold w-6 h-6 flex items-center justify-center'}>{day}</span>{items.length>0&&<span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 rounded-full">{items.length}</span>}</div><div className="space-y-1 max-h-24 overflow-y-auto">{items.map(c=><button key={c.id} type="button" onClick={()=>onSelectCne(c)} className="w-full p-1 rounded bg-white border border-emerald-200 hover:border-emerald-600 text-left"><div className="flex justify-between"><span className="text-[9px] font-mono font-bold text-emerald-800 truncate">{c.cne_id}</span><span className="text-[9px] text-slate-400">{c.start_time}</span></div><div className="text-[10px] font-semibold text-slate-800 truncate">{c.title}</div></button>)}</div></div>})}</div>
+ </div>;
+};

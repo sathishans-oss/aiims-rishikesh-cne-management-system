@@ -1,0 +1,6 @@
+{
+  "name": "Clinical Nursing Education Management System",
+  "description": "Institutional Clinical Nursing Education (CNE) Management System featuring schedule coordination, participant and attendance tracking, AI-assisted MCQ generation, learning resources, and administrative governance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
