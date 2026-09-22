@@ -1,5 +1,7 @@
 # AIIMS Rishikesh Clinical Nursing Education (CNE) Management System
 
+Production architecture: Cloudflare Worker + D1
+
 Production-oriented CNE portal built with React + TypeScript + Vite, Cloudflare Worker + D1, Google Apps Script/Drive/Sheets, and server-side Gemini MCQ generation.
 
 ## Architecture
