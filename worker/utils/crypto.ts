@@ -34,7 +34,7 @@ export async function hashPassword(password: string, salt: string, pepper: strin
     ['deriveBits']
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: hexToBytes(salt), iterations: PBKDF2_ITERATIONS },
+    { name: 'PBKDF2', hash: 'SHA-256', salt: hexToBytes(salt) as unknown as BufferSource, iterations: PBKDF2_ITERATIONS },
     keyMaterial,
     256
   );
@@ -70,7 +70,7 @@ export async function verifyAndDecodePayload(token: string, secret: string): Pro
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
     const sigBytes = hexToBytes(sigHex);
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(payload));
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes as unknown as BufferSource, encoder.encode(payload));
     return valid ? payload : null;
   } catch {
     return null;

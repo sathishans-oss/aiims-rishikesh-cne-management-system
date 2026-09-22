@@ -3,7 +3,7 @@ import { generateRandomToken } from '../utils/crypto';
 import { logAuditAction } from './auditService';
 import { enqueueBackup } from './backupService';
 
-export const APPROVED_MODELS = ['gemini-3.8-flash'];
+export const APPROVED_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'];
 export const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 export function getApprovedModel(env: Env): string {

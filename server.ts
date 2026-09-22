@@ -42,8 +42,8 @@ async function startServer() {
       };
 
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-        if (req.body && Object.keys(req.body).length > 0) {
-          requestInit.body = JSON.stringify(req.body);
+        if (req.body !== undefined) {
+          requestInit.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
           if (!headers.has('Content-Type')) {
             headers.set('Content-Type', 'application/json');
           }
@@ -78,9 +78,19 @@ async function startServer() {
       res.status(workerResponse.status);
 
       // Forward headers (including Set-Cookie)
+      const setCookies = typeof (workerResponse.headers as any).getSetCookie === 'function'
+        ? (workerResponse.headers as any).getSetCookie()
+        : null;
+
+      if (setCookies && setCookies.length > 0) {
+        res.setHeader('Set-Cookie', setCookies);
+      }
+
       workerResponse.headers.forEach((val, key) => {
         if (key.toLowerCase() === 'set-cookie') {
-          res.setHeader('Set-Cookie', val);
+          if (!setCookies) {
+            res.setHeader('Set-Cookie', val);
+          }
         } else {
           res.setHeader(key, val);
         }
